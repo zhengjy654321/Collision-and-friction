@@ -1,0 +1,200 @@
+<!doctype html>
+<html lang="zh"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>第8题模拟：板、物块与弹簧</title>
+<style>
+:root{box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px);
+--bg:#f5f4ec;--grid:#e6e4d6;--card:#fffffb;--ink:#16213b;--mute:#5b6479;--line:#d3d6de;
+--P:#d6452b;--Q:#3d6fa8;--eq:#1f9a8a;--mx:#7b4bb7;--x2:#c27c0e;--ek:#2f7fd0;--ep:#7b4bb7;--hq:#d6452b}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10141e;--grid:#171c29;--card:#171c29;--ink:#e8ebf3;--mute:#9aa3b8;--line:#2e3649;
+--P:#ff7a5c;--Q:#6ea6e6;--eq:#43c7b5;--mx:#b48cf0;--x2:#e8ad4a;--ek:#6ab0ff;--ep:#b48cf0;--hq:#ff7a5c}}
+:root[data-theme="dark"]{--bg:#10141e;--grid:#171c29;--card:#171c29;--ink:#e8ebf3;--mute:#9aa3b8;--line:#2e3649;
+--P:#ff7a5c;--Q:#6ea6e6;--eq:#43c7b5;--mx:#b48cf0;--x2:#e8ad4a;--ek:#6ab0ff;--ep:#b48cf0;--hq:#ff7a5c}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.6 "Noto Sans SC","PingFang SC","Microsoft YaHei",system-ui,sans-serif;
+background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:22px 22px}
+main{max-width:760px;margin:0 auto;padding:14px 12px 40px}
+h1{font-size:20px;margin:6px 0 2px}h2{font-size:15px;margin:18px 0 6px}
+.sub{color:var(--mute);font-size:13px;margin:0 0 10px}
+.card{background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px;margin-bottom:10px}
+canvas{width:100%;display:block}
+.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:8px 0}
+button,select{font:inherit;font-size:14px;padding:6px 12px;border:1.5px solid var(--ink);background:var(--card);color:var(--ink);border-radius:6px}
+button:focus-visible,select:focus-visible,input:focus-visible{outline:3px solid var(--Q);outline-offset:2px}
+button.on{background:var(--ink);color:var(--bg)}
+.sl{display:grid;grid-template-columns:auto 1fr 5.5em;gap:8px;align-items:center;margin:6px 0}
+.sl input{width:100%}.sl b{font-variant-numeric:tabular-nums}
+#now{font-size:13px;color:var(--mute);font-variant-numeric:tabular-nums;min-height:20px}
+#info p{margin:3px 0;font-size:14px}
+.k{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+.opt{border-left:4px solid var(--line);padding:4px 10px;margin:8px 0;font-size:14px}
+.opt b.t{color:var(--eq)}.opt b.f{color:var(--P)}
+ul{padding-left:20px;margin:6px 0;font-size:14px}
+</style></head><body><main>
+<h1>第 8 题：板 Q、物块 P 与弹簧</h1>
+<p class="sub">P、Q 质量均 1 kg，板长 0.4 m，μ = 0.25，P 以 2 m/s 从左端滑上，弹簧自由端在中点 A。拖动滑杆换弹簧，看每个选项怎么来的。</p>
+
+<div class="card">
+<canvas id="bd"></canvas>
+<div id="now"></div>
+<div class="row"><button id="pl">▶ 播放</button><button id="rs">↺ 重放</button>
+<select id="sp" aria-label="速度"><option value="0.25">0.25×</option><option value="0.5" selected>0.5×</option><option value="1">1×</option></select></div>
+<input id="sc" type="range" min="0" max="1000" value="0" style="width:100%" aria-label="时间">
+</div>
+
+<div class="card">
+<div class="row"><button data-k="50" data-m="0.25">原题 k=50</button><button data-k="30" data-m="0.25">软弹簧 k=30</button><button data-k="12" data-m="0.25">很软 k=12</button><button data-k="40" data-m="0.25">较软 k=40</button><button data-k="50" data-m="0">选项B：光滑</button></div>
+<div class="sl"><label for="k">劲度系数 k</label><input id="k" type="range" min="1" max="150" step="1" value="50"><b id="kv"></b></div>
+<div class="sl"><label for="mu">摩擦因数 μ</label><input id="mu" type="range" min="0" max="0.45" step="0.01" value="0.25"><b id="muv"></b></div>
+</div>
+
+<div class="card" id="info"></div>
+
+<h2>速度–时间（P 与 Q）</h2><div class="card"><canvas id="c1"></canvas></div>
+<h2>能量–时间</h2><div class="card"><canvas id="c2"></canvas></div>
+<h2>P 相对 A 点的位置–时间</h2><div class="card"><canvas id="c3"></canvas></div>
+
+<h2>四个选项对应当前设置</h2><div id="opts"></div>
+
+<h2>怎么读这几张图</h2>
+<div class="card"><ul>
+<li><b>共速</b>：v–t 图两条线相交。第一次共速在最大压缩处，此时系统动能恰好损失最大（2 J → 1 J）。</li>
+<li><b>平衡点 f/k</b>：弹力等于滑动摩擦力的位置。P 被推回时，围绕它做半个简谐运动。</li>
+<li><b>对称点 x₂ = 2f/k − x<sub>max</sub></b>：P 回推时第二次共速的位置，它与最大压缩点关于平衡点对称。</li>
+<li>x₂ 在平衡点内侧，弹力小于 f，P 直接粘住，之后 P、Q 一起匀速。最终弹簧还压着，所以 C 对、D 对。</li>
+</ul></div>
+</main>
+<script>
+const $=s=>document.querySelector(s),C=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+const S={k:50,mu:.25};let D=null,t=0,play=false,last=0,spd=.5;
+
+function sim(){
+ const k=S.k,f=S.mu*10,dt=2e-4;
+ let vP=2,vQ=0,xQ=0,r=-.2,st=false,heat=0,tail=-1;
+ D={T:[],R:[],XQ:[],VP:[],VQ:[],EK:[],EP:[],HQ:[],FS:[],FR:[],ev:[],nl:null,k,f,fell:false};
+ for(let i=0;i<20000;i++){
+  const tt=i*dt,Fs=k*Math.max(r,0);
+  if(st&&Fs>f+1e-9)st=false;
+  const vr=vP-vQ,fr=st?0:-f*(vr>0?1:-1);
+  if(i%25==0){D.T.push(tt);D.R.push(r);D.XQ.push(xQ);D.VP.push(vP);D.VQ.push(vQ);
+   D.EK.push(.5*(vP*vP+vQ*vQ));D.EP.push(.5*k*Math.max(r,0)**2);D.HQ.push(heat);D.FS.push(Fs);D.FR.push(st?Fs:fr)}
+  if(tail>=0&&tt>tail)break;
+  if(!st){const a=-Fs+fr;vP+=a*dt;vQ-=a*dt;heat+=f*Math.abs(vr)*dt}
+  const pr=r;r+=(vP-vQ)*dt;xQ+=vQ*dt;
+  if(!st&&vr*(vP-vQ)<0){const v=(vP+vQ)/2;vP=vQ=v;st=true;D.ev.push({t:tt,r,v})}
+  if(pr>0&&r<=0&&!D.nl)D.nl={t:tt,vP,vQ};
+  if(r<-.2){D.fell=true;break}
+  if(st&&k*Math.max(r,0)<=f+1e-9&&tail<0)tail=tt+.4;
+ }
+ D.Tend=D.T[D.T.length-1];
+ D.xm=f>0||k>0?(-f+Math.sqrt(f*f+k*(2-.4*f)))/k:0;
+ D.xe=f/k;D.x2=2*D.xe-D.xm;D.push=f>0&&k*D.xm>f+1e-9;D.cut=D.push&&D.x2<0;if(D.cut)D.x2=-(k*D.xm*D.xm/(2*f)-D.xm);
+}
+
+function fit(cv,h){const d=devicePixelRatio||1,w=cv.clientWidth;
+ if(cv.width!=Math.round(w*d)||cv.height!=h*d){cv.width=Math.round(w*d);cv.height=h*d;cv.style.height=h+'px'}
+ const x=cv.getContext('2d');x.setTransform(d,0,0,d,0,0);x.clearRect(0,0,w,h);return[x,w]}
+
+function arrow(x,x0,y,len,c,l){if(Math.abs(len)<3)return;const x1=x0+len,s=len>0?1:-1;
+ x.strokeStyle=x.fillStyle=c;x.lineWidth=2.5;x.beginPath();x.moveTo(x0,y);x.lineTo(x1,y);x.stroke();
+ x.beginPath();x.moveTo(x1,y);x.lineTo(x1-7*s,y-4);x.lineTo(x1-7*s,y+4);x.fill();
+ x.font='11px sans-serif';x.textAlign=s>0?'left':'right';x.fillText(l,x1+5*s,y+4)}
+
+function board(i){
+ const[x,w]=fit($('#bd'),178),sc=w*.6/.4,cx=w/2,gy=100,qy=gy-20,r=D.R[i],xq=D.XQ[i],rx=v=>cx+v*sc;
+ x.font='10px sans-serif';x.lineWidth=1;x.strokeStyle=C('--mute');x.fillStyle=C('--mute');x.textAlign='center';
+ x.beginPath();x.moveTo(0,gy);x.lineTo(w,gy);x.stroke();
+ for(let m=-30;m<=80;m++){const px=cx+(m*.1-xq)*sc;if(px<0||px>w)continue;const big=m%5==0;
+  x.beginPath();x.moveTo(px,gy);x.lineTo(px,gy+(big?8:4));x.stroke();if(big)x.fillText((m/10)+' m',px,gy+19)}
+ x.fillStyle=C('--Q');x.globalAlpha=.25;x.fillRect(rx(-.2),qy,.4*sc,20);x.globalAlpha=1;
+ x.strokeStyle=C('--Q');x.lineWidth=2;x.strokeRect(rx(-.2),qy,.4*sc,20);x.beginPath();x.moveTo(rx(.2),qy-26);x.lineTo(rx(.2),qy);x.stroke();
+ x.fillStyle=C('--Q');x.font='12px sans-serif';x.fillText('Q',cx,qy+14);
+ // markers in Q frame
+ const mk=[{v:0,c:'--ink',l:'A 原长'}];
+ if(D.f>0){mk.push({v:D.xe,c:'--eq',l:'平衡点 f/k'});mk.push({v:D.xm,c:'--mx',l:'x最大'});if(D.push)mk.push({v:D.x2,c:'--x2',l:D.cut?'实际停止点':'x₂ 对称点'})}
+ else mk.push({v:D.xm,c:'--mx',l:'x最大'});
+ mk.sort((a,b)=>a.v-b.v).forEach((m,j)=>{const px=rx(m.v),yy=gy+36+j%3*14;
+  x.strokeStyle=x.fillStyle=C(m.c);x.lineWidth=1.5;x.setLineDash([3,3]);x.beginPath();x.moveTo(px,qy);x.lineTo(px,yy-9);x.stroke();x.setLineDash([]);
+  x.font='11px sans-serif';x.textAlign='left';x.fillText(m.l,px+3,yy)});
+ // spring
+ x.strokeStyle=C('--mute');x.lineWidth=1.5;x.beginPath();const a=rx(.2),b=rx(Math.max(r,0)),yc=qy-13;x.moveTo(a,yc);
+ for(let s=1;s<=14;s++)x.lineTo(a+(b-a)*s/14,yc+(s%2?-7:7));x.lineTo(b,yc);x.stroke();
+ // P
+ x.fillStyle=C('--P');x.fillRect(rx(r-.03),qy-30,.06*sc,30);x.fillStyle='#fff';x.font='bold 13px sans-serif';x.textAlign='center';x.fillText('P',rx(r),qy-10);
+ x.fillStyle=C('--P');arrow(x,rx(r),qy-52,-D.FS[i]*8,C('--x2'),'F弹');arrow(x,rx(r),qy-40,D.FR[i]*8,C('--eq'),'f');
+}
+
+function chart(cv,h,o,tc){
+ const[x,w]=fit(cv,h),L=38,R=10,T=20,B=22,Tn=D.Tend,X=q=>L+q/Tn*(w-L-R),Y=v=>h-B-(v-o.y0)/(o.y1-o.y0)*(h-T-B);
+ x.font='11px sans-serif';x.lineWidth=1;x.strokeStyle=C('--line');x.fillStyle=C('--mute');x.textAlign='right';
+ for(let i=0;i<=4;i++){const v=o.y0+(o.y1-o.y0)*i/4,y=Y(v);x.beginPath();x.moveTo(L,y);x.lineTo(w-R,y);x.stroke();x.fillText(v.toFixed(o.dp),L-4,y+4)}
+ x.textAlign='center';const st=Tn>2?.5:.25;for(let q=0;q<=Tn;q+=st)x.fillText(q.toFixed(2),X(q),h-6);
+ (o.hl||[]).forEach(l=>{x.strokeStyle=x.fillStyle=C(l.c);x.setLineDash([4,3]);x.beginPath();x.moveTo(L,Y(l.y));x.lineTo(w-R,Y(l.y));x.stroke();x.setLineDash([]);
+  x.font='10px sans-serif';x.textAlign='right';x.fillText(l.l,w-R-2,Y(l.y)-2)});
+ x.font='11px sans-serif';
+ (o.vl||[]).forEach(e=>{x.strokeStyle=C('--mute');x.setLineDash([2,3]);x.beginPath();x.moveTo(X(e.t),T);x.lineTo(X(e.t),h-B);x.stroke();x.setLineDash([])});
+ const path=a=>{x.beginPath();a.forEach((v,i)=>{const px=X(D.T[i]),py=Y(v);i?x.lineTo(px,py):x.moveTo(px,py)})};
+ [[.3,0],[1,1]].forEach(([al,cl])=>{x.save();if(cl){x.beginPath();x.rect(0,0,X(tc),h);x.clip()}x.globalAlpha=al;
+  o.ys.forEach(s=>{x.strokeStyle=C(s.c);x.lineWidth=2.2;x.setLineDash(s.d?[5,4]:[]);path(s.a);x.stroke()});x.restore()});
+ x.setLineDash([]);x.strokeStyle=C('--ink');x.lineWidth=1;x.beginPath();x.moveTo(X(tc),T);x.lineTo(X(tc),h-B);x.stroke();
+ (o.pts||[]).forEach(p=>{const px=X(p.t),py=Y(p.y);x.fillStyle=C(p.c||'--ink');x.beginPath();x.arc(px,py,4,0,7);x.fill();
+  x.textAlign=px>w*.6?'right':'left';x.fillText(p.l,px+(px>w*.6?-7:7),py+(p.dy||-7))});
+ let lx=L+4;o.ys.forEach(s=>{x.fillStyle=C(s.c);x.textAlign='left';x.fillText('— '+s.n,lx,13);lx+=x.measureText('— '+s.n).width+12});
+}
+
+function charts(tc){
+ const ev=D.ev,n=D.T.length,last=n-1,f=D.f;
+ const vl=ev.map(e=>({t:e.t}));
+ chart($('#c1'),190,{y0:0,y1:2,dp:1,ys:[{a:D.VP,c:'--P',n:'P 速度'},{a:D.VQ,c:'--Q',n:'Q 速度'}],vl,
+  pts:ev.map((e,i)=>({t:e.t,y:e.v,l:'共速'+(i+1)+' v='+e.v.toFixed(2),dy:i%2?16:-8,c:'--ink'}))},tc);
+ const pts=[];if(ev[0])pts.push({t:ev[0].t,y:2-1,l:'动能损失最大 1 J',dy:-9,c:'--ek'});
+ let im=0;D.EP.forEach((v,i)=>{if(v>D.EP[im])im=i});if(D.EP[im]>0)pts.push({t:D.T[im],y:D.EP[im],l:'Ep最大 '+D.EP[im].toFixed(2)+' J',dy:-8,c:'--ep'});
+ pts.push({t:D.T[last],y:D.HQ[last],l:'摩擦热 '+D.HQ[last].toFixed(2)+' J',dy:-8,c:'--hq'});
+ const tot=D.EK.map((v,i)=>v+D.EP[i]+D.HQ[i]);
+ chart($('#c2'),210,{y0:0,y1:2,dp:1,ys:[{a:D.EK,c:'--ek',n:'动能'},{a:D.EP,c:'--ep',n:'弹性势能'},{a:D.HQ,c:'--hq',n:'摩擦热'},{a:tot,c:'--ink',n:'总能量',d:1}],vl,pts},tc);
+ const hl=[{y:0,c:'--ink',l:'A 原长'}];
+ if(f>0){hl.push({y:D.xe,c:'--eq',l:'平衡点 f/k'},{y:D.xm,c:'--mx',l:'x最大'});if(D.push)hl.push({y:D.x2,c:'--x2',l:D.cut?'停止点':'x₂'})}
+ chart($('#c3'),200,{y0:-.2,y1:.2,dp:2,ys:[{a:D.R,c:'--P',n:'P 位置 r（右为压缩）'}],hl,vl,
+  pts:ev.map((e,i)=>({t:e.t,y:e.r,l:'共速'+(i+1),dy:i?14:-8,c:'--ink'}))},tc);
+}
+
+function info(){
+ const d=D,f=d.f,k=d.k,e=d.ev,l=d.T.length-1,rE=d.R[l],q=d.HQ[l];
+ let h=`<p><span class="k" style="background:var(--mx)"></span>最大压缩量 x<sub>max</sub> = <b>${d.xm.toFixed(3)} m</b>（由 ½kx² + f(0.2 + x) = 1 J 解出）</p>`;
+ if(f>0)h+=`<p><span class="k" style="background:var(--eq)"></span>平衡点 f/k = <b>${d.xe.toFixed(3)} m</b>，最大静摩擦 f = ${f.toFixed(2)} N，最大压缩处弹力 kx<sub>max</sub> = ${(k*d.xm).toFixed(2)} N</p>`;
+ if(d.push)h+=`<p><span class="k" style="background:var(--x2)"></span>弹力 &gt; f，P 被推回；${d.cut?'镜像公式 2f/k − x<sub>max</sub> 算出的点已在原长左侧，不再适用：P 离开弹簧后只剩摩擦减速，会滑得更远。实际停止点 = <b>'+d.x2.toFixed(3)+' m</b>（k·x<sub>max</sub>²/2f − x<sub>max</sub> = P 离开弹簧后多滑的距离）':'对称点 x₂ = <b>'+d.x2.toFixed(3)+' m</b>（在原长右侧，弹簧仍压缩）'}</p>`;
+ else if(f>0)h+=`<p>弹力 ≤ f，最大压缩处共速后直接粘住，只共速 1 次。</p>`;
+ if(d.xm>=.2)h+=`<p>⚠ 压缩量已达到弹簧长度 0.2 m，此设置只作对比。</p>`;
+ h+=`<p>共速共 <b>${e.length}</b> 次；`+(d.fell?'P 滑离了 Q 的左端。':`终态：P 相对 A 的位置 ${rE.toFixed(3)} m，P、Q 速度 ${d.VP[l].toFixed(2)} / ${d.VQ[l].toFixed(2)} m/s。`)+`</p>`;
+ $('#info').innerHTML=h;
+ const fin=!d.fell&&rE>1e-4;
+ const o=[
+  [Math.abs(d.xm-.1)<.0005,'A','最大压缩量','x<sub>max</sub> = '+d.xm.toFixed(3)+' m。原弹簧 k=50 时恰为 0.1 m，所以 A 对。'],
+  [false,'B','光滑时弹簧恢复原长','选“选项B：光滑”：'+(d.nl?`P 速度 ${d.nl.vP.toFixed(2)} m/s，Q 速度 ${d.nl.vQ.toFixed(2)} m/s。当前设置的值。等质量弹性作用会交换速度，P 为 0，不是 1 m/s，B 错。`:'当前设置下 P 没回到原长。')],
+  [fin,'C','稳定后 P 的摩擦力',fin?`稳定后弹簧仍压缩，弹力 ${(k*rE).toFixed(2)} N 向左，P 受<b>向右</b>的静摩擦力，C 对。`:'当前设置下稳定时弹簧无弹力，P 不受摩擦力，与 C 的情形不同。'],
+  [q<.999,'D','损失的机械能',`摩擦热 Q = <b>${q.toFixed(2)} J</b>（原题 1.00 J）。`+(q<.999?'弹簧里还剩弹性势能，所以损失的机械能减少，D 对。':'此设置下弹性势能全部耗尽，没有减少。')]
+ ];
+ $('#opts').innerHTML=o.map(a=>`<div class="opt" style="border-color:var(${a[0]?'--eq':'--line'})"><b class="${a[0]?'t':'f'}">${a[1]} ${a[2]}</b>：${a[3]}</div>`).join('');
+}
+
+function draw(){if(!D)return;const n=D.T.length,i=Math.min(n-1,Math.round(t/D.Tend*(n-1)));
+ board(i);charts(t);
+ $('#now').textContent=`t=${t.toFixed(2)} s   vP=${D.VP[i].toFixed(2)}   vQ=${D.VQ[i].toFixed(2)} m/s   压缩量 ${Math.max(D.R[i],0).toFixed(3)} m   弹力 ${D.FS[i].toFixed(2)} N`;
+ $('#sc').value=t/D.Tend*1000;$('#pl').textContent=play?'⏸ 暂停':'▶ 播放'}
+
+function loop(ts){if(play){t+=(ts-last)/1000*spd;if(t>=D.Tend){t=D.Tend;play=false}draw()}last=ts;requestAnimationFrame(loop)}
+function setup(k,mu,replay){S.k=k;S.mu=mu;$('#k').value=k;$('#mu').value=mu;$('#kv').textContent=k+' N/m';$('#muv').textContent=mu.toFixed(2);
+ sim();info();t=replay?0:D.Tend;play=!!replay;draw()}
+
+$('#k').oninput=e=>setup(+e.target.value,S.mu,0);
+$('#mu').oninput=e=>setup(S.k,+e.target.value,0);
+document.querySelectorAll('[data-k]').forEach(b=>b.onclick=()=>setup(+b.dataset.k,+b.dataset.m,1));
+$('#pl').onclick=()=>{if(t>=D.Tend)t=0;play=!play;draw()};
+$('#rs').onclick=()=>{t=0;play=true;draw()};
+$('#sp').onchange=e=>spd=+e.target.value;
+$('#sc').oninput=e=>{play=false;t=e.target.value/1000*D.Tend;draw()};
+addEventListener('resize',draw);
+matchMedia('(prefers-color-scheme:dark)').addEventListener('change',draw);
+setup(50,.25,1);requestAnimationFrame(loop);
+</script></body></html>
